@@ -1,0 +1,14 @@
+DELETE FROM `Spell`;
+ALTER TABLE `Spell`
+  DROP COLUMN `data`,
+  ADD COLUMN `kind` VARCHAR(191) NOT NULL,
+  ADD COLUMN `classes` JSON NOT NULL,
+  ADD COLUMN `castingTime` JSON NOT NULL,
+  ADD COLUMN `range` JSON NOT NULL,
+  ADD COLUMN `components` JSON NOT NULL,
+  ADD COLUMN `duration` JSON NOT NULL,
+  ADD COLUMN `description` LONGTEXT NOT NULL,
+  ADD COLUMN `higherLevel` TEXT NULL,
+  ADD COLUMN `cantripUpgrade` TEXT NULL,
+  ADD COLUMN `damage` JSON NOT NULL,
+  ADD COLUMN `sourceData` JSON NOT NULL;

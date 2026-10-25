@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "D&D SRD Spell Dataset",
+  "description": "Normalized spell dataset extracted from the provided SRD JSON.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "dataset",
+    "edition",
+    "source",
+    "count",
+    "spells"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "dataset": {
+      "type": "string",
+      "const": "dnd-srd-spells"
+    },
+    "edition": {
+      "type": "string",
+      "const": "2024"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "type",
+        "name",
+        "version",
+        "license",
+        "attribution"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "attribution": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spells": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/spell"
+      }
+    }
+  },
+  "$defs": {
+    "spell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "externalKey",
+        "slug",
+        "name",
+        "level",
+        "kind",
+        "school",
+        "classes",
+        "castingTime",
+        "range",
+        "components",
+        "duration",
+        "description",
+        "higherLevel",
+        "cantripUpgrade",
+        "source",
+        "damage"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "externalKey": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slug": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cantrip",
+            "leveled"
+          ]
+        },
+        "school": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Abjuration",
+            "Conjuration",
+            "Divination",
+            "Enchantment",
+            "Evocation",
+            "Illusion",
+            "Necromancy",
+            "Transmutation",
+            null
+          ]
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "castingTime": {
+          "$ref": "#/$defs/castingTime"
+        },
+        "range": {
+          "$ref": "#/$defs/range"
+        },
+        "components": {
+          "$ref": "#/$defs/components"
+        },
+        "duration": {
+          "$ref": "#/$defs/duration"
+        },
+        "description": {
+          "type": "string"
+        },
+        "higherLevel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cantripUpgrade": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "damage": {
+          "type": "array",
+          "description": "Structured damage expressions extracted from spell rules text; empty when no damage expression was detected.",
+          "items": {
+            "$ref": "#/$defs/damage"
+          }
+        }
+      }
+    },
+    "castingTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "type",
+        "value",
+        "unit",
+        "ritual"
+      ],
+      "properties": {
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "action",
+            "bonus_action",
+            "reaction",
+            "time",
+            "other"
+          ]
+        },
+        "value": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ritual": {
+          "type": "boolean"
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "type",
+        "value",
+        "unit"
+      ],
+      "properties": {
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "self",
+            "touch",
+            "sight",
+            "unlimited",
+            "special",
+            "distance",
+            "self_area"
+          ]
+        },
+        "value": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shape": {
+          "type": "string"
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "verbal",
+        "somatic",
+        "material",
+        "materialDescription"
+      ],
+      "properties": {
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verbal": {
+          "type": "boolean"
+        },
+        "somatic": {
+          "type": "boolean"
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "materialDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "type",
+        "value",
+        "unit",
+        "concentration"
+      ],
+      "properties": {
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "instantaneous",
+            "timed",
+            "concentration",
+            "special"
+          ]
+        },
+        "value": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "concentration": {
+          "type": "boolean"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "version",
+        "license",
+        "attribution"
+      ],
+      "properties": {
+        "document": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attribution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "damage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount",
+        "damageType",
+        "trigger",
+        "notes",
+        "sourceSection",
+        "sourceText"
+      ],
+      "properties": {
+        "amount": {
+          "type": "string",
+          "minLength": 1
+        },
+        "damageType": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Acid",
+            "Bludgeoning",
+            "Cold",
+            "Fire",
+            "Force",
+            "Lightning",
+            "Necrotic",
+            "Piercing",
+            "Poison",
+            "Psychic",
+            "Radiant",
+            "Slashing",
+            "Thunder",
+            null
+          ]
+        },
+        "trigger": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceSection": {
+          "type": "string",
+          "enum": [
+            "description",
+            "higherLevel",
+            "cantripUpgrade"
+          ]
+        },
+        "sourceText": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

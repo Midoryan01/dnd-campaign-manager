@@ -1,0 +1,736 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum CampaignRole {
+  OWNER
+  DM
+  PLAYER
+  SPECTATOR
+}
+
+enum CampaignStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SessionStatus {
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum Visibility {
+  PUBLIC
+  DM_ONLY
+  PLAYER_VISIBLE
+  SELECTED_USERS
+}
+
+enum LocationType {
+  WORLD
+  REGION
+  CITY
+  VILLAGE
+  DISTRICT
+  BUILDING
+  FOREST
+  MOUNTAIN
+  CAVE
+  DUNGEON
+  ROOM
+  OTHER
+}
+
+enum MapType {
+  WORLD
+  REGION
+  CITY
+  DUNGEON
+  BATTLEMAP
+  OTHER
+}
+
+model User {
+  id                String               @id @default(cuid())
+  email             String               @unique
+  displayName       String
+  preferredLocale   String               @default("id")
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  memberships       CampaignMember[]
+  createdSessions   Session[]            @relation("SessionCreatedBy")
+  notes             SessionNote[]
+  diceRolls         DiceRoll[]
+  aiConversations   AIConversation[]
+  passwordHash      String?
+  resetTokens       PasswordResetToken[]
+  campaignAuditLogs CampaignAuditLog[]
+}
+
+model Campaign {
+  id              String             @id @default(cuid())
+  name            String
+  description     String?            @db.Text
+  system          String             @default("DND")
+  rulesVersion    String             @default("5.2.1")
+  locale          String             @default("id")
+  status          CampaignStatus     @default(ACTIVE)
+  timezone        String             @default("Asia/Jakarta")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  members         CampaignMember[]
+  partyMembers    PartyMember[]
+  sessions        Session[]
+  notes           SessionNote[]
+  timeline        TimelineEvent[]
+  lore            Lore[]
+  locations       Location[]
+  shops           Shop[]
+  npcs            NPC[]
+  factions        Faction[]
+  quests          Quest[]
+  storyScenes     StoryScene[]
+  storyNotes      StoryNote[]
+  maps            GameMap[]
+  combats         Combat[]
+  diceRolls       DiceRoll[]
+  sources         ContentSource[]
+  homebrew        HomebrewContent[]
+  aiConversations AIConversation[]
+  auditLogs       CampaignAuditLog[]
+}
+
+model CampaignAuditLog {
+  id         String   @id @default(cuid())
+  campaignId String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  summary    String   @db.Text
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model CampaignMember {
+  id         String       @id @default(cuid())
+  campaignId String
+  userId     String
+  role       CampaignRole @default(OWNER)
+  createdAt  DateTime     @default(now())
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+}
+
+model PartyMember {
+  id                String      @id @default(cuid())
+  campaignId        String
+  name              String
+  playerName        String?
+  species           String?
+  className         String?
+  level             Int         @default(1)
+  background        String?
+  currentHp         Int         @default(1)
+  maxHp             Int         @default(1)
+  tempHp            Int         @default(0)
+  ac                Int         @default(10)
+  initiativeBonus   Int         @default(0)
+  passivePerception Int?
+  speed             Int         @default(30)
+  spellSaveDC       Int?
+  isActive          Boolean     @default(true)
+  notes             String?     @db.Text
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  campaign          Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  combatants        Combatant[]
+
+  @@index([campaignId, name])
+}
+
+model Session {
+  id          String          @id @default(cuid())
+  campaignId  String
+  createdById String
+  title       String
+  date        DateTime?
+  status      SessionStatus   @default(PLANNED)
+  objectives  String?         @db.Text
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("SessionCreatedBy", fields: [createdById], references: [id])
+  notes       SessionNote[]
+  timeline    TimelineEvent[]
+
+  @@index([campaignId, status])
+}
+
+model SessionNote {
+  id           String      @id @default(cuid())
+  campaignId   String
+  sessionId    String?
+  authorId     String
+  title        String
+  body         String      @db.LongText
+  visibility   Visibility  @default(DM_ONLY)
+  storySceneId String?
+  locationId   String?
+  questId      String?
+  tags         Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  campaign     Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  session      Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  storyScene   StoryScene? @relation(fields: [storySceneId], references: [id], onDelete: SetNull)
+  location     Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  quest        Quest?      @relation(fields: [questId], references: [id], onDelete: SetNull)
+  author       User        @relation(fields: [authorId], references: [id])
+
+  @@index([campaignId, visibility])
+}
+
+model TimelineEvent {
+  id          String      @id @default(cuid())
+  campaignId  String
+  sessionId   String?
+  title       String
+  description String?     @db.Text
+  eventDate   DateTime?
+  sortOrder   Int         @default(0)
+  visibility  Visibility  @default(DM_ONLY)
+  createdAt   DateTime    @default(now())
+  campaign    Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  session     Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  storyScene  StoryScene?
+
+  @@index([campaignId, eventDate])
+}
+
+model Lore {
+  id         String     @id @default(cuid())
+  campaignId String
+  title      String
+  category   String?
+  body       String     @db.LongText
+  visibility Visibility @default(DM_ONLY)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, visibility])
+}
+
+model Location {
+  id          String        @id @default(cuid())
+  campaignId  String
+  parentId    String?
+  name        String
+  type        LocationType  @default(OTHER)
+  description String?       @db.Text
+  readAloud   String?       @db.Text
+  dmNotes     String?       @db.Text
+  imageUrl    String?       @db.Text
+  visibility  Visibility    @default(DM_ONLY)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  parent      Location?     @relation("LocationTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Location[]    @relation("LocationTree")
+  npcs        NPC[]
+  storyScenes StoryScene[]
+  maps        GameMap[]
+  markers     MapToken[]
+  notes       SessionNote[]
+  shops       Shop[]
+
+  @@index([campaignId, visibility])
+  @@index([campaignId, parentId])
+}
+
+model NPC {
+  id          String       @id @default(cuid())
+  campaignId  String
+  locationId  String?
+  factionId   String?
+  name        String
+  role        String?
+  status      String       @default("ACTIVE")
+  description String?      @db.Text
+  personality String?      @db.Text
+  motivation  String?      @db.Text
+  voice       String?      @db.Text
+  visibility  Visibility   @default(DM_ONLY)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  campaign    Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  location    Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  faction     Faction?     @relation(fields: [factionId], references: [id], onDelete: SetNull)
+  combatants  Combatant[]
+  storyScenes StoryScene[]
+  shopsOwned  Shop[]       @relation("ShopProprietor")
+
+  @@index([campaignId, visibility])
+}
+
+model Shop {
+  id           String            @id @default(cuid())
+  campaignId   String
+  locationId   String?
+  proprietorId String?
+  name         String
+  description  String?           @db.Text
+  isOpen       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  campaign     Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  location     Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  proprietor   NPC?              @relation("ShopProprietor", fields: [proprietorId], references: [id], onDelete: SetNull)
+  items        ShopItem[]
+  transactions ShopTransaction[]
+
+  @@index([campaignId, name])
+  @@index([locationId])
+  @@index([proprietorId])
+}
+
+model ShopItem {
+  id           String            @id @default(cuid())
+  shopId       String
+  name         String
+  description  String?           @db.Text
+  priceCopper  Int
+  stock        Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  transactions ShopTransaction[]
+
+  @@index([shopId, name])
+}
+
+model ShopTransaction {
+  id              String    @id @default(cuid())
+  shopId          String
+  itemId          String?
+  itemName        String
+  quantity        Int
+  unitPriceCopper Int
+  buyer           String?
+  note            String?   @db.Text
+  createdAt       DateTime  @default(now())
+  shop            Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  item            ShopItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, createdAt])
+  @@index([itemId])
+}
+
+model Faction {
+  id          String     @id @default(cuid())
+  campaignId  String
+  name        String
+  description String?    @db.Text
+  goals       String?    @db.Text
+  resources   String?    @db.Text
+  allies      String?    @db.Text
+  rivals      String?    @db.Text
+  reputation  Int        @default(0)
+  visibility  Visibility @default(DM_ONLY)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  members     NPC[]
+  quests      Quest[]
+
+  @@index([campaignId, visibility])
+}
+
+model Quest {
+  id          String        @id @default(cuid())
+  campaignId  String
+  factionId   String?
+  title       String
+  description String?       @db.Text
+  status      String        @default("ACTIVE")
+  reward      String?       @db.Text
+  visibility  Visibility    @default(DM_ONLY)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  campaign    Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  faction     Faction?      @relation(fields: [factionId], references: [id], onDelete: SetNull)
+  scenes      StoryScene[]
+  notes       SessionNote[]
+
+  @@index([campaignId, visibility])
+}
+
+enum CombatStatus {
+  PREPARING
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum CombatantType {
+  MONSTER
+  NPC
+  PLAYER
+  CUSTOM
+}
+
+enum ContentSourceType {
+  SRD
+  HOMEBREW
+  USER_CREATED
+  IMPORTED
+}
+
+enum AIType {
+  RULES_ASSISTANT
+  DM_ASSISTANT
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model GameMap {
+  id                String     @id @default(cuid())
+  campaignId        String
+  name              String
+  fileKey           String
+  mimeType          String
+  sizeBytes         Int
+  mapType           MapType    @default(OTHER)
+  relatedLocationId String?
+  description       String?    @db.Text
+  width             Int?
+  height            Int?
+  gridEnabled       Boolean    @default(false)
+  gridSize          Int?
+  createdAt         DateTime   @default(now())
+  campaign          Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  relatedLocation   Location?  @relation(fields: [relatedLocationId], references: [id], onDelete: SetNull)
+  tokens            MapToken[]
+
+  @@index([campaignId])
+  @@index([relatedLocationId])
+}
+
+model MapToken {
+  id         String     @id @default(cuid())
+  mapId      String
+  locationId String?
+  name       String
+  label      String?
+  x          Float
+  y          Float
+  visible    Boolean    @default(true)
+  visibility Visibility @default(DM_ONLY)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  map        GameMap    @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  location   Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([mapId])
+  @@index([locationId])
+  @@index([mapId, visibility])
+}
+
+model Combat {
+  id              String       @id @default(cuid())
+  campaignId      String
+  name            String
+  status          CombatStatus @default(PREPARING)
+  round           Int          @default(1)
+  activeTurnIndex Int          @default(0)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime     @default(now())
+  campaign        Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  combatants      Combatant[]
+  logs            CombatLog[]
+  scenes          StoryScene[]
+
+  @@index([campaignId, status])
+}
+
+model Combatant {
+  id            String        @id @default(cuid())
+  combatId      String
+  monsterId     String?
+  partyMemberId String?
+  npcId         String?
+  type          CombatantType @default(CUSTOM)
+  name          String
+  initiative    Int           @default(0)
+  currentHp     Int           @default(1)
+  maxHp         Int           @default(1)
+  tempHp        Int           @default(0)
+  ac            Int           @default(10)
+  isActive      Boolean       @default(true)
+  sortOrder     Int           @default(0)
+  conditions    Json?
+  combat        Combat        @relation(fields: [combatId], references: [id], onDelete: Cascade)
+  monster       Monster?      @relation(fields: [monsterId], references: [id], onDelete: SetNull)
+  partyMember   PartyMember?  @relation(fields: [partyMemberId], references: [id], onDelete: SetNull)
+  npc           NPC?          @relation(fields: [npcId], references: [id], onDelete: SetNull)
+
+  @@index([combatId, initiative])
+}
+
+model CombatLog {
+  id        String   @id @default(cuid())
+  combatId  String
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+  combat    Combat   @relation(fields: [combatId], references: [id], onDelete: Cascade)
+
+  @@index([combatId, createdAt])
+}
+
+model ContentSource {
+  id          String            @id @default(cuid())
+  campaignId  String?
+  type        ContentSourceType
+  name        String
+  version     String?
+  license     String?
+  attribution String?           @db.Text
+  createdAt   DateTime          @default(now())
+  campaign    Campaign?         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  monsters    Monster[]
+  spells      Spell[]
+  items       Item[]
+  rules       Rule[]
+
+  @@unique([type, name, version])
+}
+
+model Monster {
+  id                            String        @id @default(cuid())
+  sourceId                      String
+  externalKey                   String
+  name                          String
+  slug                          String
+  edition                       String?
+  sourceLabel                   String?
+  creatureType                  String?
+  size                          Json?
+  alignment                     String?
+  armorClass                    Int?
+  hitPoints                     Int?
+  hitPointFormula               String?
+  challengeRating               Float?
+  experiencePoints              Int?
+  classification                Json?
+  combatStats                   Json?
+  abilities                     Json?
+  proficiencyBonus              Int?
+  skills                        Json?
+  senses                        Json?
+  languages                     Json?
+  telepathy                     Int?
+  telepathyData                 Json?
+  defenses                      Json?
+  gear                          Json?
+  challenge                     Json?
+  traits                        Json?
+  actions                       Json?
+  bonusActions                  Json?
+  reactions                     Json?
+  legendaryActions              Json?
+  legendaryActionsPerTurn       Int?
+  legendaryActionsPerTurnInLair Int?
+  spellcasting                  Json?
+  data                          Json
+  source                        ContentSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  combatants                    Combatant[]
+
+  @@unique([sourceId, externalKey])
+  @@index([name])
+  @@index([creatureType, challengeRating])
+}
+
+model Spell {
+  id             String        @id @default(cuid())
+  sourceId       String
+  externalKey    String
+  name           String
+  slug           String
+  level          Int           @default(0)
+  kind           String
+  school         String?
+  classes        Json
+  castingTime    Json
+  range          Json
+  components     Json
+  duration       Json
+  description    String        @db.LongText
+  higherLevel    String?       @db.Text
+  cantripUpgrade String?       @db.Text
+  damage         Json
+  sourceData     Json
+  source         ContentSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, externalKey])
+  @@index([name, level])
+}
+
+model Item {
+  id          String        @id @default(cuid())
+  sourceId    String
+  externalKey String
+  name        String
+  slug        String
+  category    String?
+  data        Json
+  source      ContentSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, externalKey])
+  @@index([name])
+}
+
+model Rule {
+  id          String        @id @default(cuid())
+  sourceId    String
+  externalKey String
+  title       String
+  slug        String
+  category    String?
+  body        String        @db.LongText
+  searchText  String        @db.LongText
+  source      ContentSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, externalKey])
+  @@index([title])
+}
+
+model HomebrewContent {
+  id          String     @id @default(cuid())
+  campaignId  String
+  createdById String
+  type        String
+  name        String
+  data        Json
+  visibility  Visibility @default(DM_ONLY)
+  createdAt   DateTime   @default(now())
+  campaign    Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, type])
+}
+
+model DiceRoll {
+  id         String    @id @default(cuid())
+  userId     String
+  campaignId String?
+  sessionId  String?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  notation   String
+  label      String?
+  result     Json
+  createdAt  DateTime  @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model AIConversation {
+  id         String      @id @default(cuid())
+  userId     String
+  campaignId String?
+  type       AIType
+  title      String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  messages   AIMessage[]
+
+  @@index([userId, campaignId])
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  role           String
+  content        String         @db.LongText
+  citations      Json?
+  createdAt      DateTime       @default(now())
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model StoryScene {
+  id              String         @id @default(cuid())
+  campaignId      String
+  title           String
+  objective       String?        @db.Text
+  notes           String?        @db.Text
+  locationId      String?
+  status          String         @default("TODO")
+  sortOrder       Int            @default(0)
+  visibility      Visibility     @default(DM_ONLY)
+  timelineEventId String?        @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  campaign        Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actId           String?
+  act             StoryNote?     @relation(fields: [actId], references: [id], onDelete: SetNull)
+  location        Location?      @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  npcs            NPC[]
+  encounters      Combat[]
+  timelineEvent   TimelineEvent? @relation(fields: [timelineEventId], references: [id], onDelete: SetNull)
+  quests          Quest[]
+  linkedNotes     SessionNote[]
+
+  @@index([campaignId, status, sortOrder])
+  @@index([locationId])
+  @@index([actId, status, sortOrder])
+}
+
+model StoryNote {
+  id         String       @id @default(cuid())
+  campaignId String
+  kind       String
+  name       String
+  note       String?      @db.Text
+  status     String       @default("TODO")
+  progress   Int          @default(0)
+  clockSize  Int          @default(6)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scenes     StoryScene[]
+
+  @@index([campaignId, kind, status])
+}

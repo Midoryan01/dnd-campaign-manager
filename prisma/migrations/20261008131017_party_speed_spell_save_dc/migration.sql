@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `partymember` ADD COLUMN `speed` INTEGER NOT NULL DEFAULT 30,
+    ADD COLUMN `spellSaveDC` INTEGER NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE `Monster` ADD COLUMN `telepathyData` JSON NULL;
